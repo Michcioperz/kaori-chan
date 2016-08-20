@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Kaori</title>
+</head>
+<body>
+<input id="suggestbox" type="url" placeholder="insert soundcloud url here">
+<a href="#" onclick="suggest()">Suggest</a>
+<a href="#" onclick="skipnow()">Skip current song</a>
+<textarea id="messages" readonly></textarea>
+<div id="playerbox"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://connect.soundcloud.com/sdk/sdk-3.1.2.js"></script>
+<script src="https://w.soundcloud.com/player/api.js"></script>
+<script src="/sc_apikey.js"></script>
+<script>
+  SC.initialize({
+    client_id: sc_apikey
+  });
+  var socket = io();
+  var scp, sng;
+  function suggest() {
+    socket.emit('suggest', document.getElementById('suggestbox').value);
+    document.getElementById('suggestbox').value = '';
+  }
+  function skipnow() {
+    socket.emit('skip');
+  }
+  var textarea = document.getElementById('messages');
+  var playerbox = document.getElementById('playerbox');
+  function message(content) {
+    textarea.value += '\n' + content;
+    textarea.scrollTop = textarea.scrollHeight;
+  }
+  socket.on('current-song', function (song) {
+    sng = song;
+    SC.oEmbed('https://api.soundcloud.com/tracks/' + song[0]).then(function (player) {
+      playerbox.innerHTML = player.html;
+      scp = SC.Widget(document.querySelector("iframe"));
+      scp.bind(SC.Widget.Events.READY, function () {
+        scp.bind(SC.Widget.Events.PLAY, function () {
+          scp.seekTo(song[1]);
+        });
+        scp.play();
+      });
+
+    });
+  });
+  socket.on('message', message);
+  socket.emit('get-current');
+</script>
+</body>
+</html>
